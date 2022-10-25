@@ -3,7 +3,10 @@ package one.digitalinnovation.parking.service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
+import one.digitalinnovation.parking.dto.dto.ParkingDTO;
+import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,49 +19,51 @@ public class ParkingService {
 
     private final ParkingRepository parkingRepository;
 
-    public ParkingService(ParkingRepository parkingRepository) {
+    private final ModelMapper modelMapper;
+
+    public ParkingService(ParkingRepository parkingRepository, ModelMapper modelMapper) {
         this.parkingRepository = parkingRepository;
+        this.modelMapper = modelMapper;
     }
 
     @Transactional(readOnly = true)
-    public List<Parking> findAll() {
-        return parkingRepository.findAll();
+    public List<ParkingDTO> findAll() {
+        List<Parking> parkingList = parkingRepository.findAll();
+        return parkingList.stream().map(parkingEntity -> modelMapper.map(parkingEntity, ParkingDTO.class)).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public Parking findById(String id) {
-        return parkingRepository.findById(id).orElseThrow(() -> new ParkingNotFoundException(id));
+    public ParkingDTO findById(String id) {
+        Parking parking = parkingRepository.findById(id).orElseThrow(() -> new ParkingNotFoundException());
+        return modelMapper.map(parking, ParkingDTO.class);
     }
 
     @Transactional
-    public Parking create(Parking parkingCreate) {
+    public ParkingDTO create(ParkingDTO parkingCreate) {
+        Parking parking = modelMapper.map(parkingCreate, Parking.class);
         String uuid = getUUID();
-        parkingCreate.setId(uuid);
-        parkingCreate.setEntryDate(LocalDateTime.now());
-        parkingRepository.save(parkingCreate);
-        return parkingCreate;
+        parking.setId(uuid);
+        Parking parkingSave = parkingRepository.save(parking);
+        return modelMapper.map(parkingSave, ParkingDTO.class);
     }
 
     @Transactional
     public void delete(String id) {
-        findById(id);
-        parkingRepository.deleteById(id);
+        var parking = parkingRepository.findById(id)
+                .orElseThrow(ParkingNotFoundException::new);
+        parkingRepository.delete(parking);
     }
 
     @Transactional
-    public Parking update(String id, Parking parkingCreate) {
-        Parking parking = findById(id);
-        parking.setColor(parkingCreate.getColor());
-        parking.setState(parkingCreate.getState());
-        parking.setModel(parkingCreate.getModel());
-        parking.setLicense(parkingCreate.getLicense());
+    public ParkingDTO update(String id, ParkingDTO parkingCreate) {
+        Parking parking = parkingRepository.findById(id).orElseThrow(ParkingNotFoundException::new);
         parkingRepository.save(parking);
-        return parking;
+        return modelMapper.map(parking, ParkingDTO.class);
     }
 
     @Transactional
     public Parking checkOut(String id) {
-        Parking parking = findById(id);
+        Parking parking = parkingRepository.findById(id).orElseThrow(ParkingNotFoundException::new);
         parking.setExitDate(LocalDateTime.now());
         parking.setBill(ParkingCheckOut.getBill(parking));
         return parkingRepository.save(parking);
