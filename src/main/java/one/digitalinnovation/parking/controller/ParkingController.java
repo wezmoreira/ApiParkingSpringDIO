@@ -2,22 +2,15 @@ package one.digitalinnovation.parking.controller;
 
 import java.util.List;
 
+import org.modelmapper.ModelMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import one.digitalinnovation.parking.dto.dto.ParkingCreateDTO;
 import one.digitalinnovation.parking.dto.dto.ParkingDTO;
-import one.digitalinnovation.parking.util.ParkingMapper;
 import one.digitalinnovation.parking.model.Parking;
 import one.digitalinnovation.parking.service.ParkingService;
 
@@ -27,26 +20,25 @@ import one.digitalinnovation.parking.service.ParkingService;
 public class ParkingController {
 
     private final ParkingService parkingService;
-    private final ParkingMapper parkingMapper;
 
-    public ParkingController(ParkingService parkingService, ParkingMapper parkingMapper) {
+    private final ModelMapper modelMapper;
+
+    public ParkingController(ParkingService parkingService, ModelMapper modelMapper) {
         this.parkingService = parkingService;
-        this.parkingMapper = parkingMapper;
+        this.modelMapper = modelMapper;
     }
 
     @GetMapping
     @ApiOperation("Find all parkings")
     public ResponseEntity<List<ParkingDTO>> findAll() {
-        List<Parking> parkingList = parkingService.findAll();
-        List<ParkingDTO> result = parkingMapper.toParkingDTOList(parkingList);
-        return ResponseEntity.ok(result);
+        List<ParkingDTO> parkingDTOList = parkingService.findAll();
+        return ResponseEntity.ok(parkingDTOList);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ParkingDTO> findById(@PathVariable String id) {
-        Parking parking = parkingService.findById(id);
-        ParkingDTO result = parkingMapper.toParkingDTO(parking);
-        return ResponseEntity.ok(result);
+        ParkingDTO parkingDTO = parkingService.findById(id);
+        return ResponseEntity.ok(parkingDTO);
     }
 
     @DeleteMapping("/{id}")
@@ -57,23 +49,23 @@ public class ParkingController {
 
     @PostMapping
     public ResponseEntity<ParkingDTO> create(@RequestBody ParkingCreateDTO dto) {
-        var parkingCreate = parkingMapper.toParkingCreate(dto);
-        var parking = parkingService.create(parkingCreate);
-        var result = parkingMapper.toParkingDTO(parking);
-        return ResponseEntity.status(HttpStatus.CREATED).body(result);
+        var model = modelMapper.map(dto, ParkingDTO.class);
+        ParkingDTO parkingDTO = parkingService.create(model);
+        return ResponseEntity.status(HttpStatus.CREATED).body(parkingDTO);
     }
 
-    @PutMapping("/{id}")
+    @PatchMapping("/{id}")
     public ResponseEntity<ParkingDTO> update(@PathVariable String id, @RequestBody ParkingCreateDTO parkingCreteDTO) {
-        Parking parkingUpdate = parkingMapper.toParkingCreate(parkingCreteDTO);
-        Parking parking = parkingService.update(id, parkingUpdate);
-        return ResponseEntity.ok(parkingMapper.toParkingDTO(parking));
+        var model = modelMapper.map(parkingCreteDTO, ParkingDTO.class);
+        ParkingDTO parkingDTO = parkingService.update(id, model);
+        return ResponseEntity.ok(parkingDTO);
     }
 
     @PostMapping("/{id}/exit")
     public ResponseEntity<ParkingDTO> checkOut(@PathVariable String id) {
         Parking parking = parkingService.checkOut(id);
-        return ResponseEntity.ok(parkingMapper.toParkingDTO(parking));
+        var model = modelMapper.map(parking, ParkingDTO.class);
+        return ResponseEntity.ok(model);
     }
 
 }
